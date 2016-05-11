@@ -1,0 +1,24 @@
+{
+  "name": "dpos-pbft",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sqfasd/dpos-pbft.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sqfasd/dpos-pbft/issues"
+  },
+  "homepage": "https://github.com/sqfasd/dpos-pbft#readme",
+  "dependencies": {
+    "async": "^1.5.2",
+    "bytebuffer": "^5.0.1",
+    "lodash": "^4.12.0"
+  }
+}
