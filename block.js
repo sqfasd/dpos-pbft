@@ -28,6 +28,7 @@ function Block(data) {
       recipient: 'somebody',
       sender: 'nobody'
     });
+    size += coinbaseTrs.getSize();
     this.transactions.push(coinbaseTrs);
   }
   for (var i in this.transactions) {
