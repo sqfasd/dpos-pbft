@@ -1,11 +1,11 @@
 var crypto = require('crypto');
-var bytebuffer = require('bytebuffer');
+var ByteBuffer = require('bytebuffer');
 var _ = require('lodash');
 
 function Transaction(data) {
   this.data = _.assign({
     amount: 0,
-    timestamp: Date.now() / 1000,
+    timestamp: Math.floor(Date.now() / 1000),
     recipient: '',
     sender: ''
   }, data);
@@ -56,5 +56,7 @@ Transaction.prototype.getBytes = function() {
 Transaction.prototype.calculateHash = function() {
   var bytes = this.getBytes();
   this.size = bytes.length;
-  return crypto.createHash('sha256').update(bytes).digest();
+  return crypto.createHash('sha256').update(bytes).digest().toString('hex');
 }
+
+module.exports = Transaction;

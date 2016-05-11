@@ -1,6 +1,7 @@
 var crypto = require('crypto');
-var bytebuffer = require('bytebuffer');
+var ByteBuffer = require('bytebuffer');
 var _ = require('lodash');
+var Transaction = require('./transaction');
 
 function Block(data) {
   this.data = _.assign({
@@ -10,7 +11,7 @@ function Block(data) {
     timestamp: 0,
     generatorId: 0,
     previousHash: '',
-    merkelHash: '',
+    merkleHash: '',
     transactions: []
   }, data);
 
@@ -21,15 +22,30 @@ function Block(data) {
     size += t.getSize();
     this.transactions.push(t);
   }
+  if (this.transactions.length === 0) {
+    var coinbaseTrs = new Transaction({
+      amount: 5,
+      recipient: 'somebody',
+      sender: 'nobody'
+    });
+    this.transactions.push(coinbaseTrs);
+  }
+  for (var i in this.transactions) {
+    this.data.transactions.push(this.transactions[i].getData());
+  }
   if (!this.data.size) {
     this.data.size = size;
   }
-  if (!this.data.merkelHash) {
-    this.data.merkelHash = this.calculateMerkelHash();
+  if (!this.data.merkleHash) {
+    this.data.merkleHash = this.calculateMerkleHash();
   }
   if (!this.data.hash) {
     this.data.hash = this.calculateHash();
   }
+}
+
+Block.prototype.getData = function() {
+  return this.data;
 }
 
 Block.prototype.getVersion = function() {
@@ -60,12 +76,33 @@ Block.prototype.getHash = function() {
   return this.data.hash;
 }
 
-Block.prototype.getMerkelHash = function() {
-  return this.data.merkelHash;
+Block.prototype.getMerkleHash = function() {
+  return this.data.merkleHash;
 }
 
 Block.prototype.getTransactions = function() {
   return this.transactions;
+}
+
+Block.prototype.calculateMerkleHash = function() {
+  var hashes = [];
+  this.transactions.forEach(function(t) {
+    hashes.push(t.getHash());
+  });
+  while (hashes.length > 1) {
+    var tmp = [];
+    for (var i = 0; i < hashes.length / 2; ++i) {
+      var md = crypto.createHash('sha256');
+      md.update(hashes[i*2]);
+      md.update(hashes[i*2+1]);
+      tmp.push(md.digest().toString('hex'));
+    }
+    if (hashes.length % 2 === 1) {
+      tmp.push(hashes[hashes.length - 1]);
+    }
+    hashes = tmp;
+  }
+  return hashes[0];
 }
 
 Block.prototype.calculateHash = function() {
@@ -77,8 +114,10 @@ Block.prototype.calculateHash = function() {
   buf.writeInt(d.timestamp);
   buf.writeInt(d.generatorId);
   buf.writeIString(d.previousHash);
-  buf.writeIString(d.merkelHash);
+  buf.writeIString(d.merkleHash);
   buf.flip();
   var bytes = buf.toBuffer();
-  return crypto.createHash('sha256').update(bytes).digest();
+  return crypto.createHash('sha256').update(bytes).digest().toString('hex');
 }
+
+module.exports = Block;

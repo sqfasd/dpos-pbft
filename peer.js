@@ -35,7 +35,6 @@ Peer.prototype.setMessageCb = function(cb) {
 }
 
 Peer.prototype.close = function() {
-  var self = this;
   this.socket.end();
 }
 

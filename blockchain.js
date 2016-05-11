@@ -5,12 +5,11 @@ var slots = require('./slots');
 var protocol = require('./protocol');
 var Block = require('./block');
 var Transaction = require('./transaction');
+var HashList = require('./hash-list');
 
 var COIN = 100000000;
 
-var self;
 function BlockChain(nodeId) {
-  self = this;
   EventEmitter.call(this);
   this.nodeId = nodeId;
   this.genesis = new Block({
@@ -37,7 +36,8 @@ function BlockChain(nodeId) {
 util.inherits(BlockChain, EventEmitter);
 
 BlockChain.prototype.start = function() {
-  setImmedidate(function nextLoop() {
+  var self = this;
+  setImmediate(function nextLoop() {
     self.loop_(function() {
       setTimeout(nextLoop, 1000);
     });
@@ -59,7 +59,7 @@ BlockChain.prototype.addTransaction = function(trs) {
 
 BlockChain.prototype.hasBlock = function(block) {
   var id = block.getHash();
-  return !!this.pendingBlocks[id] || !!this.chain.get[id];
+  return !!this.pendingBlocks[id] || !!this.chain.get(id);
 }
 
 BlockChain.prototype.validateBlock = function(block) {
@@ -72,7 +72,7 @@ BlockChain.prototype.validateBlock = function(block) {
 }
 
 BlockChain.prototype.addBlock = function(block) {
-  this.chain.add(block);
+  this.chain.add(block.getHash(), block);
   var transactions = block.getTransactions();
   for (var i in transactions) {
     this.transactionIndex[transactions[i].getHash()] = transactions[i];
@@ -87,7 +87,7 @@ BlockChain.prototype.createBlock = function(cb) {
   assert(!!lastBlock);
   var newBlock = new Block({
     height: lastBlock.getHeight() + 1,
-    timestamp: Date.now() / 1000,
+    timestamp: Math.floor(Date.now() / 1000),
     previousHash: lastBlock.getHash(),
     generatorId: this.nodeId,
   });
@@ -95,29 +95,32 @@ BlockChain.prototype.createBlock = function(cb) {
     newBlock.addTransaction(this.pendingTransactions[k]);
   }
   this.pendingTransactions = {};
-  setImmedidate(function() {
-    cb(null, newBlock);
+  return newBlock;
+}
+
+BlockChain.prototype.printBlockChain = function() {
+  var output = '';
+  this.chain.each(function(block, i) {
+    output += util.format('(%d:%s) -> ', i, block.getHash().substr(0, 6));
   });
+  console.log('node ' + this.nodeId, output);
 }
 
 BlockChain.prototype.loop_ = function(cb) {
   var currentSlot = slots.getSlotNumber();
   var lastBlock = this.chain.last();
   assert(!!lastBlock);
-  if (currentSlot === slots.getSlotNumber(lastBlock.getTimestamp())) {
+  this.printBlockChain();
+  var lastSlot = slots.getSlotNumber(slots.getTime(lastBlock.getTimestamp() * 1000));
+  if (currentSlot === lastSlot || Date.now() % 10000 > 5000) {
     return cb();
   }
-  for (var i = currentSlot; i < slots.getLastSlot(currentSlot); ++i) {
-    var delegateId = i % slots.delegates;
-    if (this.nodeId === delegateId) {
-      this.createBlock(function(err, block) {
-        if (!err && currentSlot === slots.getSlotNumber(block.getTimestamp())) {
-          self.emit('new-message', protocol.blockMessage(block.getData()));
-        }
-        cb();
-      });
-      return;
-    }
+  var delegateId = currentSlot % slots.delegates;
+  if (this.nodeId === delegateId) {
+    var block = this.createBlock();
+    console.log('slot: %d, height: %d, nodeId: %d', currentSlot, block.getHeight(), this.nodeId);
+    this.addBlock(block);
+    this.emit('new-message', protocol.blockMessage(block.getData()));
   }
   cb();
 }

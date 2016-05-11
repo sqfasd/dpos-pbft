@@ -111,8 +111,9 @@ HashList.prototype.select = function(offset, limit, reverse) {
 
 HashList.prototype.each = function(cb) {
   var node = this.head_;
+  var i = 0;
   while (node) {
-    cb(node.data);
+    cb(node.data, i++);
     node = node.next;
   }
 };
@@ -126,7 +127,7 @@ HashList.prototype.first = function() {
 
 HashList.prototype.last = function() {
   if (this.tail_) {
-    return this.tial_.data;
+    return this.tail_.data;
   }
   return null;
 }

@@ -17,7 +17,7 @@ function Node(i) {
     console.log('node ' + i + ' ready to accept');
   });
 
-  this.blockchain = new BlockChain();
+  this.blockchain = new BlockChain(this.id);
   this.blockchain.on('new-message', this.broadcast.bind(this));
 }
 
@@ -53,31 +53,30 @@ Node.prototype.onConnection_ = function(socket) {
 
 Node.prototype.processMessage_ = function(peer, msg) {
   var peerId = peer.getId();
-  if (this.peers[peerId]) {
-    this.peers[peerId].close();
+  if (!this.peers[peerId]) {
+    this.peers[peerId] = peer;
   }
-  this.peers[peerId] = peer;
   switch (msg.type) {
     case protocol.MessageType.Transaction:
-      var trs = new Transaction(msg);
-      if (!blockchain.hasTransaction(trs)) {
-        if (blockchain.validateTransaction(trs)) {
+      var trs = new Transaction(msg.body);
+      if (!this.blockchain.hasTransaction(trs)) {
+        if (this.blockchain.validateTransaction(trs)) {
           this.broadcast(msg);
-          blockchain.addTransaction(trs);
+          this.blockchain.addTransaction(trs);
         }
       }
       break;
     case protocol.MessageType.Block:
-      var block = new Block(msg);
-      if (!blockchain.hasBlock(block)) {
-        if (blockchain.validateBlock(block)) {
+      var block = new Block(msg.body);
+      if (!this.blockchain.hasBlock(block)) {
+        if (this.blockchain.validateBlock(block)) {
           this.broadcast(msg);
-          blockchain.addBlock(block);
+          this.blockchain.addBlock(block);
         }
       }
       break;
     default:
-      blockchain.processMessage(msg);
+      this.blockchain.processMessage(msg);
       break;
   }
 }
