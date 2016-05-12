@@ -34,6 +34,10 @@ Node.prototype.connect = function() {
   }
 }
 
+Node.prototype.printBlockChain = function() {
+  this.blockchain.printBlockChain();
+}
+
 Node.prototype.start = function() {
   this.blockchain.start();
 }

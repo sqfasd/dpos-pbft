@@ -5,7 +5,7 @@ var slots = require('./slots');
 var protocol = require('./protocol');
 var Block = require('./block');
 var Transaction = require('./transaction');
-var HashList = require('./hash-list');
+var HashList = require('./hashlist');
 
 var COIN = 100000000;
 
@@ -151,7 +151,7 @@ BlockChain.prototype.loop_ = function(cb) {
   var currentSlot = slots.getSlotNumber();
   var lastBlock = this.chain.last();
   assert(!!lastBlock);
-  this.printBlockChain();
+  // this.printBlockChain();
   var lastSlot = slots.getSlotNumber(slots.getTime(lastBlock.getTimestamp() * 1000));
   if (currentSlot === lastSlot || Date.now() % 10000 > 5000) {
     return cb();

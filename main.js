@@ -25,8 +25,14 @@ function main() {
       for (var i in nodes) {
         nodes[i].start();
       }
+      next();
     }
   ], function(err, results) {
+    setInterval(function() {
+      nodes.forEach(function(node) {
+        node.printBlockChain();
+      });
+    }, 3);
   });
 }
 
