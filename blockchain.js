@@ -9,9 +9,9 @@ var HashList = require('./hash-list');
 
 var COIN = 100000000;
 
-function BlockChain(nodeId) {
+function BlockChain(node) {
   EventEmitter.call(this);
-  this.nodeId = nodeId;
+  this.node = node;
   this.genesis = new Block({
     height: 0,
     timestamp: 1462953000,
@@ -89,7 +89,7 @@ BlockChain.prototype.createBlock = function(cb) {
     height: lastBlock.getHeight() + 1,
     timestamp: Math.floor(Date.now() / 1000),
     previousHash: lastBlock.getHash(),
-    generatorId: this.nodeId,
+    generatorId: this.node.id,
   });
   for (var k in this.pendingTransactions) {
     newBlock.addTransaction(this.pendingTransactions[k]);
@@ -101,9 +101,50 @@ BlockChain.prototype.createBlock = function(cb) {
 BlockChain.prototype.printBlockChain = function() {
   var output = '';
   this.chain.each(function(block, i) {
-    output += util.format('(%d:%s) -> ', i, block.getHash().substr(0, 6));
+    output += util.format('(%d:%s:%d) -> ', i, block.getHash().substr(0, 6), block.getGeneratorId());
   });
-  console.log('node ' + this.nodeId, output);
+  console.log('node ' + this.node.id, output);
+}
+
+BlockChain.prototype.makeFork_ = function() {
+  var lastBlock = this.chain.last();
+  assert(!!lastBlock);
+  var height = lastBlock.getHeight() + 1;
+  var timestamp = Math.floor(Date.now() / 1000);
+  var block1 = new Block({
+    height: height,
+    timestamp: timestamp,
+    previousHash: lastBlock.getHash(),
+    generatorId: this.node.id
+  });
+  block1.addTransaction(new Transaction({
+    amount: 1000,
+    recipient: 'alice',
+    sender: 'cracker'
+  }));
+  var block2 = new Block({
+    height: height,
+    timestamp: timestamp,
+    previousHash: lastBlock.getHash(),
+    generatorId: this.node.id
+  });
+  block2.addTransaction(new Transaction({
+    amount: 1000,
+    recipient: 'bob',
+    sender: 'cracker'
+  }));
+  console.log('fork on node: %d, height: %d, fork1: %s, fork2: %s', this.node.id, lastBlock.getHeight() + 1, block1.getHash(), block2.getHash());
+  var i = 0;
+  for (var id in this.node.peers) {
+    if (i++ % 2 === 0) {
+      console.log('send fork1 to', id);
+      this.node.peers[id].send(protocol.blockMessage(block1.getData()));
+    } else {
+      console.log('send fork2 to', id);
+      this.node.peers[id].send(protocol.blockMessage(block2.getData()));
+    }
+  }
+  this.addBlock(block1);
 }
 
 BlockChain.prototype.loop_ = function(cb) {
@@ -116,11 +157,15 @@ BlockChain.prototype.loop_ = function(cb) {
     return cb();
   }
   var delegateId = currentSlot % slots.delegates;
-  if (this.nodeId === delegateId) {
-    var block = this.createBlock();
-    console.log('slot: %d, height: %d, nodeId: %d', currentSlot, block.getHeight(), this.nodeId);
-    this.addBlock(block);
-    this.emit('new-message', protocol.blockMessage(block.getData()));
+  if (this.node.id === delegateId) {
+    if (!this.node.isBad) {
+      var block = this.createBlock();
+      console.log('slot: %d, height: %d, nodeId: %d', currentSlot, block.getHeight(), this.node.id);
+      this.addBlock(block);
+      this.emit('new-message', protocol.blockMessage(block.getData()));
+    } else {
+      this.makeFork_();
+    }
   }
   cb();
 }

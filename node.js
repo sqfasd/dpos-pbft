@@ -7,8 +7,9 @@ var Transaction = require('./transaction');
 
 var PORT = 10000;
 
-function Node(i) {
+function Node(i, isBad) {
   this.id = i;
+  this.isBad = isBad;
   this.peerIds = [];
   this.peers = {};
 
@@ -17,7 +18,7 @@ function Node(i) {
     console.log('node ' + i + ' ready to accept');
   });
 
-  this.blockchain = new BlockChain(this.id);
+  this.blockchain = new BlockChain(this);
   this.blockchain.on('new-message', this.broadcast.bind(this));
 }
 

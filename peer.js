@@ -21,7 +21,7 @@ function Peer(id, port, localId) {
 
 Peer.prototype.send = function(msg) {
   var data = JSON.stringify(msg);
-  console.log(this.localId + ' >> [' + this.id + ']', data);
+  // console.log(this.localId + ' >> [' + this.id + ']', data);
   this.socket.write(data);
 }
 
@@ -51,7 +51,7 @@ Peer.prototype.onData_ = function(data) {
     this.id = msg.id;
     console.log('peer ' + this.id + ' accpeted on ' + this.localId);
   }
-  console.log(this.localId + ' << ' + this.id, data);
+  // console.log(this.localId + ' << ' + this.id, data);
   this.messageCb(this, msg);
 }
 

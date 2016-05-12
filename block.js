@@ -45,6 +45,14 @@ function Block(data) {
   }
 }
 
+Block.prototype.addTransaction = function(trs) {
+  this.transactions.push(trs);
+  this.size += trs.getSize();
+  this.data.transactions.push(trs.getData());
+  this.data.merkleHash = this.calculateMerkleHash();
+  this.data.hash = this.calculateHash();
+}
+
 Block.prototype.getData = function() {
   return this.data;
 }
