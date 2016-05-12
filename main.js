@@ -32,7 +32,7 @@ function main() {
       nodes.forEach(function(node) {
         node.printBlockChain();
       });
-    }, 3000);
+    }, 5000);
   });
 }
 
