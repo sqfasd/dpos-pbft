@@ -19,6 +19,7 @@
   "dependencies": {
     "async": "^1.5.2",
     "bytebuffer": "^5.0.1",
+    "commander": "^2.9.0",
     "lodash": "^4.12.0"
   }
 }

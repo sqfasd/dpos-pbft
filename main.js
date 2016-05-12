@@ -1,10 +1,24 @@
 var Node = require('./node');
 var async = require('async');
+var Flags = require('commander');
 
 var nodes = [];
-var badIds = [1, 5, 10, 15];
 
 function main() {
+  Flags
+    .version(require('./package').version)
+    .option('-b, --bad-ids [value]', 'Specify bad node id list, for example: 1,2,3')
+    .option('-p, --pbft', 'Enable pbft algorithms')
+    .parse(process.argv);
+  global.Flags = Flags;
+  var badIds = [];
+  if (Flags.badIds) {
+    badIds = Flags.badIds.split(',').map(function(e) {
+      return Number(e);
+    });
+  }
+  console.log(badIds);
+
   async.series([
     function(next) {
       console.log('step 1 init nodes ...');
