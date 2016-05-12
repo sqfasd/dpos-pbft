@@ -61,29 +61,7 @@ Node.prototype.processMessage_ = function(peer, msg) {
   if (!this.peers[peerId]) {
     this.peers[peerId] = peer;
   }
-  switch (msg.type) {
-    case protocol.MessageType.Transaction:
-      var trs = new Transaction(msg.body);
-      if (!this.blockchain.hasTransaction(trs)) {
-        if (this.blockchain.validateTransaction(trs)) {
-          this.broadcast(msg);
-          this.blockchain.addTransaction(trs);
-        }
-      }
-      break;
-    case protocol.MessageType.Block:
-      var block = new Block(msg.body);
-      if (!this.blockchain.hasBlock(block)) {
-        if (this.blockchain.validateBlock(block)) {
-          this.broadcast(msg);
-          this.blockchain.addBlock(block);
-        }
-      }
-      break;
-    default:
-      this.blockchain.processMessage(msg);
-      break;
-  }
+  this.blockchain.processMessage(msg);
 }
 
 module.exports = Node;

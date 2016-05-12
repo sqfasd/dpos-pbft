@@ -80,6 +80,28 @@ BlockChain.prototype.addBlock = function(block) {
 }
 
 BlockChain.prototype.processMessage = function(msg) {
+  switch (msg.type) {
+    case protocol.MessageType.Transaction:
+      var trs = new Transaction(msg.body);
+      if (!this.hasTransaction(trs)) {
+        if (this.validateTransaction(trs)) {
+          this.node.broadcast(msg);
+          this.addTransaction(trs);
+        }
+      }
+      break;
+    case protocol.MessageType.Block:
+      var block = new Block(msg.body);
+      if (!this.hasBlock(block)) {
+        if (this.validateBlock(block)) {
+          this.node.broadcast(msg);
+          this.addBlock(block);
+        }
+      }
+      break;
+    default:
+      break;
+  }
 }
 
 BlockChain.prototype.createBlock = function(cb) {
