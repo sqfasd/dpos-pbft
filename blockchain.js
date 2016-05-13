@@ -6,6 +6,7 @@ var protocol = require('./protocol');
 var Block = require('./block');
 var Transaction = require('./transaction');
 var HashList = require('./hashlist');
+var Pbft = require('./pbft');
 
 var COIN = 100000000;
 
@@ -27,10 +28,11 @@ function BlockChain(node) {
     ]
   });
   this.pendingTransactions = {};
-  this.pendingBlocks = {};
   this.transactionIndex = {};
   this.chain = new HashList();
   this.chain.add(this.genesis.getHash(), this.genesis);
+  this.pbft = new Pbft(this);
+  this.lastSlot = 0;
 }
 
 util.inherits(BlockChain, EventEmitter);
@@ -57,9 +59,8 @@ BlockChain.prototype.addTransaction = function(trs) {
   this.pendingTransactions[trs.getHash()] = trs;
 }
 
-BlockChain.prototype.hasBlock = function(block) {
-  var id = block.getHash();
-  return !!this.pendingBlocks[id] || !!this.chain.get(id);
+BlockChain.prototype.hasBlock = function(hash) {
+  return !!this.chain.get(hash) || this.pbft.hasBlock(hash);
 }
 
 BlockChain.prototype.validateBlock = function(block) {
@@ -72,6 +73,16 @@ BlockChain.prototype.validateBlock = function(block) {
 }
 
 BlockChain.prototype.addBlock = function(block) {
+  if (Flags.pbft && !this.node.isBad) {
+    var slotNumber = slots.getSlotNumber(slots.getTime(block.getTimestamp() * 1000));
+    this.pbft.addBlock(block, slotNumber);
+  } else {
+    this.commitBlock(block);
+    this.isBusy = false;
+  }
+}
+
+BlockChain.prototype.commitBlock = function(block) {
   this.chain.add(block.getHash(), block);
   var transactions = block.getTransactions();
   for (var i in transactions) {
@@ -92,7 +103,7 @@ BlockChain.prototype.processMessage = function(msg) {
       break;
     case protocol.MessageType.Block:
       var block = new Block(msg.body);
-      if (!this.hasBlock(block)) {
+      if (!this.hasBlock(block.getHash())) {
         if (this.validateBlock(block)) {
           this.node.broadcast(msg);
           this.addBlock(block);
@@ -100,6 +111,9 @@ BlockChain.prototype.processMessage = function(msg) {
       }
       break;
     default:
+      if (Flags.pbft && !this.node.isBad) {
+        this.pbft.processMessage(msg);
+      }
       break;
   }
 }
@@ -178,6 +192,9 @@ BlockChain.prototype.loop_ = function(cb) {
   if (currentSlot === lastSlot || Date.now() % 10000 > 5000) {
     return cb();
   }
+  if (Flags.pbft && this.lastSlot === currentSlot) {
+    return cb();
+  }
   var delegateId = currentSlot % slots.delegates;
   if (this.node.id === delegateId) {
     if (!this.node.isBad) {
@@ -185,6 +202,7 @@ BlockChain.prototype.loop_ = function(cb) {
       console.log('slot: %d, height: %d, nodeId: %d', currentSlot, block.getHeight(), this.node.id);
       this.addBlock(block);
       this.emit('new-message', protocol.blockMessage(block.getData()));
+      this.lastSlot = currentSlot;
     } else {
       this.makeFork_();
     }

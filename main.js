@@ -17,7 +17,8 @@ function main() {
       return Number(e);
     });
   }
-  console.log(badIds);
+  Flags.badIds = badIds;
+  Flags.pbft = !!Flags.pbft;
 
   async.series([
     function(next) {

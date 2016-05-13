@@ -3,6 +3,7 @@ var net = require('net');
 var protocol = require('./protocol');
 
 function Peer(id, port, localId) {
+  this.buf = '';
   if (typeof id === 'number') {
     this.id = id;
     this.remotePort = port;
@@ -22,6 +23,8 @@ function Peer(id, port, localId) {
 Peer.prototype.send = function(msg) {
   var data = JSON.stringify(msg);
   // console.log(this.localId + ' >> [' + this.id + ']', data);
+  this.socket.write('' + data.length);
+  this.socket.write('\n');
   this.socket.write(data);
 }
 
@@ -46,13 +49,30 @@ Peer.prototype.onConnected_ = function() {
 }
 
 Peer.prototype.onData_ = function(data) {
-  var msg = JSON.parse(data);
-  if (msg.type === protocol.MessageType.Init) {
-    this.id = msg.id;
-    console.log('peer ' + this.id + ' accpeted on ' + this.localId);
+  this.buf += data;
+  var start = 0;
+  var pos = this.buf.indexOf('\n', start);
+  var end = 0;
+  while (pos !== -1) {
+    var len = parseInt(this.buf.substring(start, pos));
+    if (this.buf.length - pos - 1 < len) {
+      break;
+    }
+    var body = this.buf.substr(pos + 1, len);
+    end = pos + 1 + len;
+
+    var msg = JSON.parse(body);
+    if (msg.type === protocol.MessageType.Init) {
+      this.id = msg.id;
+      console.log('peer ' + this.id + ' accpeted on ' + this.localId);
+    }
+    // console.log(this.localId + ' << ' + this.id, body);
+    this.messageCb(this, msg);
+
+    start = pos + 1 + len;
+    pos = this.buf.indexOf('\n', start);
   }
-  // console.log(this.localId + ' << ' + this.id, data);
-  this.messageCb(this, msg);
+  this.buf = this.buf.substring(end);
 }
 
 Peer.prototype.onClose_ = function() {
